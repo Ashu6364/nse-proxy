@@ -1,22 +1,26 @@
-#!/bin/bash
+from flask import Flask, jsonify
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
 
-# Install Chrome
-wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-dpkg -x google-chrome-stable_current_amd64.deb $HOME/chrome
-export PATH=$HOME/chrome/opt/google/chrome:$PATH
+app = Flask(__name__)
 
-# Get latest ChromeDriver version dynamically
-CHROME_DRIVER_VERSION=$(curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE)
-wget -q "https://chromedriver.storage.googleapis.com/$CHROME_DRIVER_VERSION/chromedriver_linux64.zip"
+@app.route('/nse-data', methods=['GET'])
+def get_nse_data():
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.binary_location = "/home/render/chrome/opt/google/chrome/google-chrome"
 
-# Extract ChromeDriver
-unzip chromedriver_linux64.zip
-chmod +x chromedriver
-mv chromedriver $HOME/chromedriver
+    service = Service("/home/render/chromedriver")
+    driver = webdriver.Chrome(service=service, options=chrome_options)
 
-# Set environment variables
-export PATH=$HOME:$PATH
-export DISPLAY=:99
+    driver.get("https://www.nseindia.com/api/sectorIndices")
+    data = driver.page_source
+    driver.quit()
 
-# Run Flask app
-python3 proxy.py
+    return jsonify(data)
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=10000)
